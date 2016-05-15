@@ -1,4 +1,4 @@
-var conection = null;
+var connection = null;
 var room = null;
 var webcamRoom = null;
 var isJoined = false;
