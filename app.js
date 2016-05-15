@@ -233,7 +233,7 @@ function chooseServer() {
       if (exists) {
         SERVER = '147.75.194.19'//'78.46.59.71'
       } else {
-        SERVER = 'ec2-52-51-12-4.eu-west-1.compute.amazonaws.com';
+        SERVER = '147.75.194.19'//ec2-52-51-12-4.eu-west-1.compute.amazonaws.com';
       }
       console.log("SERVER IP: " + SERVER);
       resolve();
