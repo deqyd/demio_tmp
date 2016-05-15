@@ -63,7 +63,6 @@ function onUserLeft(id) {
     var tracks = remoteTracks[id];
     for(var i = 0; i< tracks.length; i++) {
       tracks[i].detach($("#" + id + tracks[i].getType() + (i+1))[0]);
-      $("#" + id + tracks[i].getType() + (i+1))[0].remove();
     }
     // if presenter - out, then mute all audio containers between coordinators
     if (id == presenterId) {
