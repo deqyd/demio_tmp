@@ -79,7 +79,7 @@ function onUserLeft(id) {
 }
 
 function onConnectionSuccess() {
-  console.log('CONNECTED TO SERVER SUCCESSFULY');
+  console.log('CONNECTED TO SERVER SUCCESSFULLY');
   CONFIG.bosh += '?room=' + DEFAULT_ROOM;
   room = connection.initJitsiConference(DEFAULT_ROOM, CONF_OPTIONS);
   room.on(JitsiMeetJS.events.conference.CONFERENCE_JOINED, onConferenceJoined);
@@ -119,7 +119,7 @@ function onRemoteTrack(track) {
   } else {
       // else it's audio then add audio container to stage
       if (room.getParticipantById(participant)._displayName == "coordinator") {
-        // if it's from coordinator then and presenter not online then add muted audio else not muted
+        // if it's from coordinator and presenter not online then add muted audio else not muted
         if (presenterId !== "") {
           $("body").append("<audio autoplay='1' id='" + participant + "audio" + idx + "' class='coordinator'/>");
         } else {
@@ -145,7 +145,7 @@ function onConnectionFailed() {
   console.log('CONNECTION TO SERVER FAILED');
 }
 
-function checkPresenterPrescence() {
+function checkPresenterPresence() {
   var participants = room.getParticipants();
   for (var key in participants) {
     if (participants[parseInt(key)]._displayName)
@@ -161,14 +161,14 @@ function onConferenceJoined() {
   console.log('CONFERENCE JOINED');
   isJoined = true;
   var started = false;
-  if (isPresenter && !checkPresenterPrescence()) {
+  if (isPresenter && !checkPresenterPresence()) {
     started = true;
     room.setDisplayName("presenter");
     presenterId = room.myUserId();
     JitsiMeetJS.createLocalTracks({devices: ["desktop", "audio"]})
     .then(onLocalTracks)
     .then(function() {
-      // Here we are ready to share a web cam for presenter
+      // Here we are ready to share a webcam for presenter
       startWebCam();
     });
   }
@@ -247,4 +247,3 @@ chooseServer()
   JitsiMeetJS.init(CONFIG);
   start();
 });
-
