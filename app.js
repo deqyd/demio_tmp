@@ -230,9 +230,9 @@ function chooseServer() {
     var fs = require('fs');
     fs.exists(p, function(exists) {
       if (exists) {
-        SERVER = '147.75.194.19'//'78.46.59.71'
+        SERVER = '__hostname__'
       } else {
-        SERVER = '147.75.194.19'//ec2-52-51-12-4.eu-west-1.compute.amazonaws.com';
+        SERVER = '__hostname__'//ec2-52-51-12-4.eu-west-1.compute.amazonaws.com';
       }
       console.log("SERVER IP: " + SERVER);
       resolve();
