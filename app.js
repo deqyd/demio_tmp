@@ -1,4 +1,5 @@
 var connection = null;
+var ssconnection = null;
 var room = null;
 var webcamRoom = null;
 var isJoined = false;
@@ -46,13 +47,44 @@ function connect() {
   connection.addEventListener(JitsiMeetJS.events.connection.CONNECTION_FAILED, onConnectionFailed);
   connection.addEventListener(JitsiMeetJS.events.connection.CONNECTION_DISCONNECTED, disconnect);
   connection.connect();
+  
+  ssconnection = new JitsiMeetJS.JitsiConnection(null, null, CONFIG);
+  ssconnection.addEventListener(JitsiMeetJS.events.connection.CONNECTION_ESTABLISHED, onWebcamConnectionSuccess);
+  ssconnection.addEventListener(JitsiMeetJS.events.connection.CONNECTION_FAILED, onConnectionFailed);
+  ssconnection.addEventListener(JitsiMeetJS.events.connection.CONNECTION_DISCONNECTED, onWebcamDisconnect);
+  ssconnection.connect();
 }
 
 function disconnect(){
   console.log("disconnect!");
   connection.removeEventListener(JitsiMeetJS.events.connection.CONNECTION_ESTABLISHED, onConnectionSuccess);
   connection.removeEventListener(JitsiMeetJS.events.connection.CONNECTION_FAILED, onConnectionFailed);
-  connection.removeEventListener(JitsiMeetJS.events.connection.CONNECTION_DISCONNECTED, disconnect);
+  connection.removeEventListener(JitsiMeetJS.events.connection.CONNECTION_DISCONNECTED, disconnect);  
+}
+
+function onWebcamDisconnect(){
+  console.log("disconnected from webcamroom!");
+  ssconnection.removeEventListener(JitsiMeetJS.events.connection.CONNECTION_ESTABLISHED, onWebcamConnectionSuccess);
+  ssconnection.removeEventListener(JitsiMeetJS.events.connection.CONNECTION_FAILED, onConnectionFailed);
+  ssconnection.removeEventListener(JitsiMeetJS.events.connection.CONNECTION_DISCONNECTED, onWebcamDisconnect);
+}
+
+function onConnectionSuccess() {
+  console.log('CONNECTED TO SERVER SUCCESSFULLY');
+  CONFIG.bosh += '?room=' + DEFAULT_ROOM;
+  room = connection.initJitsiConference(DEFAULT_ROOM, CONF_OPTIONS);
+  room.on(JitsiMeetJS.events.conference.CONFERENCE_JOINED, onConferenceJoined);
+  room.on(JitsiMeetJS.events.conference.TRACK_ADDED, onRemoteTrack);
+  room.on(JitsiMeetJS.events.conference.USER_LEFT, onUserLeft);
+  room.join();
+}
+
+function onWebcamConnectionSuccess() {
+  webcamRoom = ssconnection.initJitsiConference(DEFAULT_ROOM+"webcam", CONF_OPTIONS);
+  webcamRoom.on(JitsiMeetJS.events.conference.CONFERENCE_JOINED, onConferenceJoined);
+  webcamRoom.on(JitsiMeetJS.events.conference.TRACK_ADDED, onRemoteTrack);
+  webcamRoom.on(JitsiMeetJS.events.conference.USER_LEFT, onUserLeft);
+  webcamRoom.join();
 }
 
 //Callbacks
@@ -77,29 +109,10 @@ function onUserLeft(id) {
     }
 }
 
-function onConnectionSuccess() {
-  console.log('CONNECTED TO SERVER SUCCESSFULLY');
-  CONFIG.bosh += '?room=' + DEFAULT_ROOM;
-  room = connection.initJitsiConference(DEFAULT_ROOM, CONF_OPTIONS);
-  room.on(JitsiMeetJS.events.conference.CONFERENCE_JOINED, onConferenceJoined);
-  room.on(JitsiMeetJS.events.conference.TRACK_ADDED, onRemoteTrack);
-  room.on(JitsiMeetJS.events.conference.USER_LEFT, onUserLeft);
-  room.join();
-}
-
-function startWebCam() {
-  isJoinedToWebcam = true;
-  webcamRoom = connection.initJitsiConference(DEFAULT_ROOM+"webcam", CONF_OPTIONS);
-  webcamRoom.on(JitsiMeetJS.events.conference.CONFERENCE_JOINED, onWebCamConferenceJoined);
-  webcamRoom.on(JitsiMeetJS.events.conference.TRACK_ADDED, onWebCamRemoteTrack);
-  webcamRoom.on(JitsiMeetJS.events.conference.USER_LEFT, onUserLeft);
-  webcamRoom.join();
-}
-
 function onRemoteTrack(track) {
   // Remote track received
   // if it's local then - out
-  console.log("REMOTE TRACK ADDED: " + track);
+  console.log("REMOTE TRACK ADDED: ", track);
   if(track.isLocal() || !track.stream)
       return;
   var participant = track.getParticipantId();
@@ -113,7 +126,7 @@ function onRemoteTrack(track) {
       $("#wait-screen")[0].style.display = "none";
       $("body").append("<video autoplay='1' id='" + participant + "video" + idx + "' />");
       if (presenterId !== room.myUserId() && !isJoinedToWebcam) {
-        startWebCam();
+        //startWebCam(); uneeded
       }
   } else {
       // else it's audio then add audio container to stage
@@ -164,11 +177,12 @@ function onConferenceJoined() {
     started = true;
     room.setDisplayName("presenter");
     presenterId = room.myUserId();
+    room.selectParticipant(presenterId)
     JitsiMeetJS.createLocalTracks({devices: ["desktop", "audio"]})
     .then(onLocalTracks)
     .then(function() {
       // Here we are ready to share a webcam for presenter
-      startWebCam();
+      //startWebCam();
     });
   }
   if (coordinatorStatus && !started) {
@@ -179,6 +193,7 @@ function onConferenceJoined() {
 
 
 function onWebCamConferenceJoined() {
+  isJoinedToWebcam = true;
   console.log('WEBCAM CONFERENCE JOINED');
   if (presenterId == room.myUserId())
     JitsiMeetJS.createLocalTracks({devices: ["video"]}).then(onLocalTracks);
@@ -195,29 +210,30 @@ function onWebCamRemoteTrack(track) {
 }
 
 function onLocalTracks(tracks) {
+  console.log('onLocalTracks: ', tracks);
   localTracks = tracks;
   for(var i = 0; i < localTracks.length; i++)
   {
-      if(localTracks[i].getType() == "video") {
-          if (localTracks[i].videoType == "camera") {
-            $("body").append("<video autoplay='1' id='localVideoCamera' />");
-            localTracks[i].attach($("#localVideoCamera")[0]);
-            $("#localVideoCamera").draggable();
-            webcamRoom.addTrack(localTracks[i]);
-          } else {
-            $("body").append("<video autoplay='1' id='localVideoDesktop" + i + "' />");
-            localTracks[i].attach($("#localVideoDesktop" + i)[0]);
-          }
+      if(localTracks[i].getType() == "audio") {
+        if($('#localAudio'+ i).length == 0) $("body").append("<audio autoplay='1' muted='true' id='localAudio" + i + "' />");
+        localTracks[i].attach($("#localAudio" + i)[0]);
       } else {
-          $("body").append("<audio autoplay='1' muted='true' id='localAudio" + i + "' />");
-          localTracks[i].attach($("#localAudio" + i)[0]);
+        if (localTracks[i].videoType == "camera") {
+          if($('#localVideoCamera').length == 0) $("body").append("<video autoplay='1' id='localVideoCamera' />");
+          localTracks[i].attach($("#localVideoCamera")[0]);
+          $("#localVideoCamera").draggable();
+          webcamRoom.addTrack(localTracks[i]);
+        } else {
+          if($('#localVideoDesktop'+ i).length == 0) $("body").append("<video autoplay='1' id='localVideoDesktop" + i + "' />");
+          localTracks[i].attach($("#localVideoDesktop" + i)[0]);
+        }        
       }
-      if(isJoined) {
-        if (localTracks[i].videoType !== "camera") {
-          room.addTrack(localTracks[i]);
-          webCamRemoteTrack = localTracks[i];
-        }
-      }
+      //if(isJoined) {
+      //  if (localTracks[i].videoType !== "camera") {
+      //    room.addTrack(localTracks[i]);
+      //    webCamRemoteTrack = localTracks[i];
+      //  }
+      //}
   }
 }
 
